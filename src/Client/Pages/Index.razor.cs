@@ -8,6 +8,7 @@ namespace PongGame.Client.Pages
 
     public partial class Index : IDisposable
     {
+        //babylonjs engine
         private Engine _engine;
         private DebugLayerScene _scene;
         protected override void OnAfterRender(bool firstRender)
@@ -22,6 +23,7 @@ namespace PongGame.Client.Pages
         {
             if (firstRender)
             {
+                //start scene
                 await CreateSceneAsync();
             }
         }
@@ -34,30 +36,34 @@ namespace PongGame.Client.Pages
         Game game;
         public async Task CreateSceneAsync()
         {
-
+            //bikin canvas dari div
             var canvas = Canvas.GetElementById("game-window");
+            //init engine babylon
             var engine = new Engine(canvas, true);
             // extend layer scene untuk debug
             _scene = new DebugLayerScene(engine);
-
+            //kasih light ke scene
             HemisphericLight light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0), _scene);
             light.intensity = 1;
-
+            //init game kita
             game = new Game(_scene);
-
+            //jalankan fungsi render ke scene
             engine.runRenderLoop(new ActionCallback(() => Task.Run(() => _scene.render(true, false))));
 
             _engine = engine;
         }
 
+        //kalau kamu mijit keyboard
         protected void HandleKeyDown(KeyboardEventArgs args)
         {
             Console.WriteLine(args.Key);
             switch (args.Key.ToLower())
             {
+                //teken w tuk geser pad ke atas
                 case "w":
                     game?.MovePadUp();
                     break;
+                //teken s untuk geser pad ke bawah
                 case "s":
                     game?.MovePadDown();
                     break;
@@ -107,6 +113,7 @@ namespace PongGame.Client.Pages
         BABYLON.GUI.TextBlock PlayerScoreTxt;
         BABYLON.GUI.TextBlock ComScoreTxt;
         BABYLON.GUI.TextBlock StatusTxt;
+        //posisi awal game
         public decimal StartX { set; get; } = 0;
         public decimal StartY { set; get; } = 0;
         public Game(Scene scene, decimal X = 0, decimal Y = 0)
@@ -116,7 +123,7 @@ namespace PongGame.Client.Pages
             this.StartY = Y;
             InitScene();
         }
-
+        //geser pad ke atas
         public void MovePadUp(Players player = Players.Human)
         {
             if (player == Players.Human)
@@ -130,7 +137,7 @@ namespace PongGame.Client.Pages
                     ComPad.position.z += MovePadDist;
             }
         }
-
+        //geser pad ke bawah
         public void MovePadDown(Players player = Players.Human)
         {
             if (player == Players.Human)
@@ -225,6 +232,7 @@ namespace PongGame.Client.Pages
             StatusTxt.color = "red";
             panel.addControl(StatusTxt);
 
+            //button tuk mulai game
             var btn = BABYLON.GUI.Button.CreateSimpleButton("btnStart", "Start Game");
             btn.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
             btn.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
@@ -243,12 +251,14 @@ namespace PongGame.Client.Pages
         }
         void StartGame()
         {
+            //klu mulai game, cek dulu sebelumnya uda mulai atau belum
             if (IsRunning && cts != null)
             {
                 cts.Cancel();
                 Thread.Sleep(200);
             }
             cts = new CancellationTokenSource();
+            //reset posisi bola
             Ball.position = new Vector3(GameWidth / 2, 0, GameHeight / 2);
             gameThread = Task.Run(async () => Loop(cts.Token));
             gameThread.Start();
@@ -256,6 +266,7 @@ namespace PongGame.Client.Pages
         Task gameThread;
         public bool IsRunning { get; set; } = false;
         CancellationTokenSource cts;
+        //game looping
         async Task Loop(CancellationToken GameToken)
         {
 
@@ -265,6 +276,7 @@ namespace PongGame.Client.Pages
 
             while (true)
             {
+                //kluar kalau token d cancel
                 if (GameToken.IsCancellationRequested)
                 {
 
@@ -273,7 +285,7 @@ namespace PongGame.Client.Pages
 
                 BallX += BallDX;
                 BallY += BallDY;
-
+                //cek kalau bola nubruk tembok kiri
                 if (BallX <= GapSize && BallDX < 0)
                 {
                     //win
@@ -281,12 +293,13 @@ namespace PongGame.Client.Pages
                     ScoreCom++;
                     BallDX *= -1;
                 }
+                //cek klu bola nubruk pad player
                 else if (BallX >= MyPad.position.x && BallX <= MyPad.position.x + GapSize && BallDX < 0 && BallY >= MyPad.position.z - (PadWidth / 2) && BallY <= MyPad.position.z + (PadWidth / 2))
                 {
                     //pantul
                     BallDX *= -1;
                 }
-
+                //cek kalau bola nubruk tembok kanan
                 if (BallX >= GameWidth - GapSize && BallDX > 0)
                 {
                     //win
@@ -294,13 +307,14 @@ namespace PongGame.Client.Pages
                     ScoreHuman++;
                     BallDX *= -1;
                 }
+                //cek kalau bola nubruk pad com
                 else if (BallX + GapSize >= ComPad.position.x && BallX <= ComPad.position.x + PadDepth && BallDX > 0 && BallY >= ComPad.position.z - (PadWidth / 2) && BallY <= ComPad.position.z + (PadWidth / 2))
                 {
                     //pantul
                     BallDX *= -1;
                 }
 
-
+                //cek klu bola nubruk langit2 dan bawah
                 if (BallY <= GapSize || BallY >= GameHeight - GapSize)
                 {
                     BallDY *= -1;
@@ -333,7 +347,7 @@ namespace PongGame.Client.Pages
                     StatusTxt.text = "You Lose!";
                     break;
                 }
-
+                //delay - kasih kesempatan tuk render UI blazor
                 await Task.Delay(50);
             }
             IsRunning = false;
